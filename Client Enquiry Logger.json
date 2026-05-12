@@ -1,0 +1,473 @@
+{
+  "name": "Client Enquiry Logger",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "client-enquiry",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "45b548dd-1a1a-4ca4-b062-bc0f27d137f2",
+      "name": "Webhook",
+      "webhookId": "b3c57f26-8c45-4d2e-9add-e7abb568ea96"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Get the fields array from Tally's actual data structure\nconst fields = $input.first().json.body.data.fields;\n\n// Helper: extracts value by field label\n// For dropdowns, resolves the selected option ID to its text\nconst getField = (label) => {\n  const field = fields.find(f => f.label === label);\n  if (!field) return '';\n  if (field.type === 'DROPDOWN' && Array.isArray(field.value) && field.options) {\n    const selectedOption = field.options.find(opt => opt.id === field.value[0]);\n    return selectedOption ? selectedOption.text : '';\n  }\n  return field.value || '';\n};\n\n// Extract all 8 form fields\nconst fullName           = getField('Full Name');\nconst emailAddress       = getField('Email Address');\nconst serviceNeeded      = getField('Service Needed');\nconst budgetRange        = getField('Budget Range');\nconst projectDescription = getField('Project Description');\nconst platform           = getField('How did you find me?');\nconst projectTimeline    = getField('Project Timeline');\nconst anythingElse       = getField('Anything else?');\n\n// Calculate follow-up date (today + 2 days)\nconst today = new Date();\nconst followUp = new Date(today);\nfollowUp.setDate(today.getDate() + 2);\nconst followUpDate = followUp.toISOString().split('T')[0];\n\n// Calculate priority score (1-10)\nlet score = 5;\n\nif (budgetRange === '$500+/Flexible/Not sure') score += 3;\nelse if (budgetRange === '$150-$500') score += 2;\nelse if (budgetRange === '$50-$150') score += 1;\nelse if (budgetRange === 'Under $50') score -= 1;\n\nif (projectTimeline === 'ASAP( within 48 hours)') score += 2;\nelse if (projectTimeline === 'This week') score += 1;\nelse if (projectTimeline === 'Flexible') score -= 1;\n\nscore = Math.min(10, Math.max(1, score));\n\nreturn [{\n  json: {\n    fullName,\n    emailAddress,\n    serviceNeeded,\n    budgetRange,\n    projectDescription,\n    platform,\n    projectTimeline,\n    anythingElse,\n    followUpDate,\n    priorityScore:  score,\n    status:         'New',\n    timestamp:      new Date().toISOString()\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        208,
+        0
+      ],
+      "id": "bb4ef37c-e590-47b8-8e1d-4e50e28fe3f1",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "0e66982b-61b2-4cd0-b1b0-0450c3aa69a3",
+              "name": "timestamp",
+              "value": "={{ $json.timestamp }}",
+              "type": "string"
+            },
+            {
+              "id": "67e46a43-c6f0-441d-b784-b077929e78ef",
+              "name": "fullname",
+              "value": "={{ $json.fullName }}",
+              "type": "string"
+            },
+            {
+              "id": "481eef6e-a638-4e43-ab20-e66c0d95937a",
+              "name": "emailAddress",
+              "value": "={{ $json.emailAddress }}",
+              "type": "string"
+            },
+            {
+              "id": "c5e059ab-0cc2-491e-a03a-d9e686e3b444",
+              "name": "serviceNeeded",
+              "value": "={{ $json.serviceNeeded }}",
+              "type": "string"
+            },
+            {
+              "id": "10b7f8f5-231e-4376-9c2a-9cdc0c463547",
+              "name": "budgetRange",
+              "value": "={{ $json.budgetRange }}",
+              "type": "string"
+            },
+            {
+              "id": "011377ca-2ba3-43ab-bb0a-4e8476009979",
+              "name": "projectDescription",
+              "value": "={{ $json.projectDescription }}",
+              "type": "string"
+            },
+            {
+              "id": "bfb4d11f-6500-4f58-81dc-673b25b03f32",
+              "name": "Platform",
+              "value": "={{ $json.platform }}",
+              "type": "string"
+            },
+            {
+              "id": "2709a599-1e78-4a18-b852-54052941d49b",
+              "name": "timeline",
+              "value": "={{ $json.projectTimeline }}",
+              "type": "string"
+            },
+            {
+              "id": "1adb764b-d106-4c0e-b783-ceb06e63dfc7",
+              "name": "followUpDate",
+              "value": "={{$json.followUpDate }}",
+              "type": "string"
+            },
+            {
+              "id": "d443b5e4-1c9a-421a-b90b-c6f4d8808d9e",
+              "name": "priorityScore",
+              "value": "={{$json.priorityScore }}",
+              "type": "string"
+            },
+            {
+              "id": "85c56f3d-838f-403a-8f10-fce6003b1ce4",
+              "name": "status",
+              "value": "={{ $json.status }}",
+              "type": "string"
+            },
+            {
+              "id": "a124df47-eb7c-4f30-b7e1-b075296c1fe5",
+              "name": "notes",
+              "value": "=",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        368,
+        0
+      ],
+      "id": "bb6e8f6d-962c-454b-8b55-a25bc23dce44",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "17mI8_a8J5-Tadd99qABzs0CJ29FJ14v-udkW6_X3y4M",
+          "mode": "list",
+          "cachedResultName": "Client Enquiry Log",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/17mI8_a8J5-Tadd99qABzs0CJ29FJ14v-udkW6_X3y4M/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Enquiries",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/17mI8_a8J5-Tadd99qABzs0CJ29FJ14v-udkW6_X3y4M/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Timestamp",
+              "displayName": "Timestamp",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Full Name",
+              "displayName": "Full Name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Email address",
+              "displayName": "Email address",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Service Needed",
+              "displayName": "Service Needed",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Budget Range",
+              "displayName": "Budget Range",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Project Description",
+              "displayName": "Project Description",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Platform",
+              "displayName": "Platform",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Timeline",
+              "displayName": "Timeline",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Follow-Up Date",
+              "displayName": "Follow-Up Date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Priority Score",
+              "displayName": "Priority Score",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Status",
+              "displayName": "Status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Notes",
+              "displayName": "Notes",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "fullName",
+              "displayName": "fullName",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "emailAddress",
+              "displayName": "emailAddress",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "serviceNeeded",
+              "displayName": "serviceNeeded",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "budgetRange",
+              "displayName": "budgetRange",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "projectDescription",
+              "displayName": "projectDescription",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "platform",
+              "displayName": "platform",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "projectTimeline",
+              "displayName": "projectTimeline",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "anythingElse",
+              "displayName": "anythingElse",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "followUpDate",
+              "displayName": "followUpDate",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "priorityScore",
+              "displayName": "priorityScore",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "timestamp",
+              "displayName": "timestamp",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "fullname",
+              "displayName": "fullname",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "timeline",
+              "displayName": "timeline",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "notes",
+              "displayName": "notes",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        576,
+        0
+      ],
+      "id": "d86bc3b6-829d-4ced-9fa5-222c4aff9bb0",
+      "name": "Append row in sheet",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "JQKa9eWR1uoZkW8f",
+          "name": "Google Sheets account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "Append row in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "e4850071-f20c-41c2-ba4a-9a9c4e56a078",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "44aca8d785924142896226762b51712e65b844c33f79aa324799705e59b4bb0b"
+  },
+  "id": "DbzDYzI5GfQtMaLx",
+  "tags": []
+}
